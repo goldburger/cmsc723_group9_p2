@@ -1,4 +1,5 @@
 import networkx as nx
+import math
 
 # look for "TODO" in this file to see what you should do.
 #
@@ -83,8 +84,13 @@ def computeFullGraph(inputGraph):
 def computeGraphEdgeWeights(graph, weights):
     for i,j in graph.edges_iter():
         graph[i][j]['weight'] = 0.   # make sure it doesn't make its way into the dot product
+        
         # TODO: your code here
-        graph[i][j]['weight'] = something_you_need_to_compute
+        # Compute edge weight
+        features = graph[i][j]
+        edgeWeight = math.exp(weights.dotProduct(features))
+
+        graph[i][j]['weight'] = edgeWeight
 
         
 # once we have a graph with weights on the edges, we need to be able
@@ -116,13 +122,15 @@ def perceptronUpdate(weights, G, true, pred):
     # aren't in the true tree -- hint, use weights.update
     for i,j in pred.edges_iter():
         # TODO: your code here
-        pass
+        if not true.has_edge(i,j):
+            weights.update(G[i][j], -1.)
         
     # first, iterate over all the edges in the true tree that
     # aren't in the predicted tree -- hint, use weights.update
     for i,j in true.edges_iter():
         # TODO: your code here
-        pass
+        if not pred.has_edge(i,j):
+            weights.update(G[i][j], 1.)
     
 # now we can finally put it all together to make a single update on a
 # single example
@@ -153,11 +161,11 @@ def runOneExample(weights, trueGraph, quiet=False):
 # we can run this with:
 # >>> weights = Weights()
 # >>> runOneExample(weights, testGraph)
-# error = 6.0 	pred = ( *root* <-> the ) ( *root* <-> hairy ) ( *root* <-> monster ) ( *root* <-> ate ) ( *root* <-> tasty ) ( *root* <-> little ) ( *root* <-> children ) 
+# error = 6.0   pred = ( *root* <-> the ) ( *root* <-> hairy ) ( *root* <-> monster ) ( *root* <-> ate ) ( *root* <-> tasty ) ( *root* <-> little ) ( *root* <-> children ) 
 # >>> runOneExample(weights, testGraph)
-# error = 2.0 	pred = ( *root* <-> the ) ( the <-> monster ) ( hairy <-> monster ) ( hairy <-> children ) ( monster <-> ate ) ( tasty <-> children ) ( little <-> children ) 
+# error = 2.0   pred = ( *root* <-> the ) ( the <-> monster ) ( hairy <-> monster ) ( hairy <-> children ) ( monster <-> ate ) ( tasty <-> children ) ( little <-> children ) 
 # >>> runOneExample(weights, testGraph)
-# error = 0.0 	pred = ( *root* <-> ate ) ( the <-> monster ) ( hairy <-> monster ) ( monster <-> ate ) ( ate <-> children ) ( tasty <-> children ) ( little <-> children ) 
+# error = 0.0   pred = ( *root* <-> ate ) ( the <-> monster ) ( hairy <-> monster ) ( monster <-> ate ) ( ate <-> children ) ( tasty <-> children ) ( little <-> children ) 
 #
 # as you can see, the error keeps dropping and the tree gets better
 # and better
