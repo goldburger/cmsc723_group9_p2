@@ -14,50 +14,50 @@ class ArcBasicState():
 
 
 	def arcLeft(self):
-		newbuffer = list(self.buffer)
-		newStack = list(self.stack)
-		newRel = list(self.relations)
+		new_buffer = list(self.buffer)
+		new_stack = list(self.stack)
+		new_rel = list(self.relations)
 
 		w1 = self.stack[0]
 		w2 = self.stack[1]
 
-		newRel.append((w1.id, w2.id))
-		newStack.pop(1)
+		new_rel.append((w1.id, w2.id))
+		new_stack.pop(1)
 
 		if self.verbose:
 			print("{0} : {1} | ({2} <- {3})".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word))
 
-		return ArcBasicState(newbuffer, newStack, newRel, self.verbose)
+		return ArcBasicState(new_buffer, new_stack, new_rel, self.verbose)
 
 	def arcRight(self):
-		newbuffer = list(self.buffer)
-		newStack = list(self.stack)
-		newRel = list(self.relations)
+		new_buffer = list(self.buffer)
+		new_stack = list(self.stack)
+		new_rel = list(self.relations)
 
 		w1 = self.stack[0]
 		w2 = self.stack[1]
 
-		newRel.append((w2.id, w1.id))
-		newStack.pop(0)
+		new_rel.append((w2.id, w1.id))
+		new_stack.pop(0)
 
 		if self.verbose:
 			print("{0} : {1} | ({2} -> {3})".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word))
 
-		return ArcBasicState(newbuffer, newStack, newRel, self.verbose)
+		return ArcBasicState(new_buffer, new_stack, new_rel, self.verbose)
 
 	def shift(self):
-		newbuffer = list(self.buffer)
-		newStack = list(self.stack)
-		newRel = list(self.relations)
+		new_buffer = list(self.buffer)
+		new_stack = list(self.stack)
+		new_rel = list(self.relations)
 
 		w = self.buffer[0]
-		newbuffer.pop(0)
-		newStack.insert(0, w)
+		new_buffer.pop(0)
+		new_stack.insert(0, w)
 
 		if self.verbose:
 			print("{0} : {1})".format([w.word for w in self.stack], [w.word for w in self.buffer]))
 
-		return ArcBasicState(newbuffer, newStack, newRel, self.verbose)
+		return ArcBasicState(new_buffer, new_stack, new_rel, self.verbose)
 
 	def done(self):
 		if(len(self.buffer) == 0 and len(self.stack) == 1):
