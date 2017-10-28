@@ -74,18 +74,24 @@ class ArcState():
 		new_stack = list(self.stack)
 		new_rel = list(self.relations)
 
-		w = self.buffer[0]
-		new_buffer.pop(0)
-		new_stack.insert(0, w)
+		# If buffer is empty and we need to shift, must be non-projective; return state that is done
+		if len(self.buffer) > 0:
 
-		if self.verbose:
-			print("{0} : {1} - {2}".format([w.word for w in self.stack], [w.word for w in self.buffer], "SHIFT"))
+			w = self.buffer[0]
+			new_buffer.pop(0)
+			new_stack.insert(0, w)
 
- 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
- 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
- 		self.configs.append((stack_detailed, buffer_detailed, ArcState.SHIFT))
+			if self.verbose:
+				print("{0} : {1} - {2}".format([w.word for w in self.stack], [w.word for w in self.buffer], "SHIFT"))
+
+ 			stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
+ 			buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+ 			self.configs.append((stack_detailed, buffer_detailed, ArcState.SHIFT))
     
-		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
+			return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
+
+		else:
+			return ArcState([], [""], self.relations, self.graph, self.configs, self.verbose)
 
 	## Returns True is this is a valid final state, False otherwise
 	def done(self):
@@ -136,6 +142,7 @@ def iterCoNLL(filename):
             if G != None:
                 yield {'graph': G, 'buffer': b}
             G = None
+            b = []
         else:
             if G == None:
                 nn = nn + 1

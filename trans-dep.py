@@ -7,14 +7,19 @@ if __name__ == "__main__":
 
   gen = iterCoNLL("en.tr100")
 
-  # For now, just work with first one from generator
-  first = next(gen)
+  training = []
+  i = 0
+  for s in gen:
+    parser = ArcState(s['buffer'], [ArcNode(0, "*ROOT*")], [], s['graph'], [])
+    while not parser.done():
+      parser = parser.do_action(parser.get_next_action())
+    for config in parser.configs:
+      #print "Stack: " + str(config[0])
+      #print "Buffer: " + str(config[1])
+      #print "Transition: " + str(config[2])
 
-  parser = ArcState(first['buffer'], [ArcNode(0, "*ROOT*")], [], first['graph'], [], verbose=True)
-  while not parser.done():
-    parser = parser.do_action(parser.get_next_action())
+      training.append(config)
+    print i
+    i += 1
 
-  for config in parser.configs:
-    print "Stack: " + str(config[0])
-    print "Buffer: " + str(config[1])
-    print "Transition: " + str(config[2])
+  print "Appeared to succeed with all configs for training"
