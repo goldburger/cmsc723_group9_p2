@@ -13,11 +13,14 @@ class ArcState():
 	ARC_RIGHT = 2
 	SHIFT = 3
 
-	def __init__(self, buffer, stack, relations, verbose=False):
+	def __init__(self, buffer, stack, relations, graph, configs, verbose=False):
 		self.buffer = buffer
 		self.stack = stack
 		self.relations = relations
 		self.verbose = verbose
+		self.graph = graph
+		## List for the configuration + action items to be used for training
+		self.configs = configs
 
 
 	## Perform a left arc transition in this state
@@ -36,7 +39,11 @@ class ArcState():
 		if self.verbose:
 			print("{0} : {1} | ({2} <- {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_LEFT"))
 
-		return ArcState(new_buffer, new_stack, new_rel, self.verbose)
+ 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
+ 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+ 		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_LEFT))
+
+		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
 
 	## Perform a right arc transition in this state
 	## Returns the resulting state
@@ -54,7 +61,11 @@ class ArcState():
 		if self.verbose:
 			print("{0} : {1} | ({2} -> {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_RIGHT"))
 
-		return ArcState(new_buffer, new_stack, new_rel, self.verbose)
+ 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
+ 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+ 		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_RIGHT))
+
+		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
 
 	## Perform a shift transition in this state
 	## Returns the resulting state
@@ -70,7 +81,11 @@ class ArcState():
 		if self.verbose:
 			print("{0} : {1} - {2}".format([w.word for w in self.stack], [w.word for w in self.buffer], "SHIFT"))
 
-		return ArcState(new_buffer, new_stack, new_rel, self.verbose)
+ 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
+ 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+ 		self.configs.append((stack_detailed, buffer_detailed, ArcState.SHIFT))
+    
+		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
 
 	## Returns True is this is a valid final state, False otherwise
 	def done(self):
@@ -80,16 +95,16 @@ class ArcState():
 			return False
 
 	## Get the next correct action for this state to match the given target graph
-	def get_next_action(self, graph):
+	def get_next_action(self):
 		if len(self.stack) >= 2:
 			s1 = self.stack[0]
 			s2 = self.stack[1]
 
-			if(graph.has_edge(s2.id, s1.id)):
+			if(self.graph.has_edge(s2.id, s1.id)):
 				return ArcState.ARC_LEFT
-			elif(graph.has_edge(s1.id, s2.id)):
+			elif(self.graph.has_edge(s1.id, s2.id)):
 				connected = True
-				for i,j in graph.edges():
+				for i,j in self.graph.edges():
 					if(j == s1.id and not ((j,i) in self.relations)):
 						connected = False
 
@@ -113,30 +128,32 @@ class ArcState():
 def iterCoNLL(filename):
     h = open(filename, 'r')
     G = None
+    b = []
     nn = 0
     for l in h:
         l = l.strip()
         if l == "":
             if G != None:
-                yield G
+                yield {'graph': G, 'buffer': b}
             G = None
         else:
             if G == None:
                 nn = nn + 1
-                G = nx.Graph()
-                G.add_node(0, {'word': '*root*', 'lemma': '*root*', 'cpos': '*root*', 'pos': '*root*', 'feats': '*root*'})
+                G = nx.DiGraph()
+                G.add_node(0, attr_dict={'word': '*root*', 'lemma': '*root*', 'cpos': '*root*', 'pos': '*root*', 'feats': '*root*'})
                 newGraph = False
+            # TODO: Record all parts of split line in graph, to allow accessing for extra features for latter part of project
             [id, word, lemma, cpos, pos, feats, head, drel, phead, pdrel] = l.split('\t')
-            G.add_node(int(id), {'word' : word,
+            G.add_node(int(id), attr_dict={'word' : word,
                                  'lemma': lemma,
                                  'cpos' : cpos,
                                  'pos'  : pos,
                                  'feats': feats})
-            
-            G.add_edge(int(head), int(id), {}) # 'true_rel': drel, 'true_par': int(id)})
+            G.add_edge(int(id), int(head)) # 'true_rel': drel, 'true_par': int(id)})
+            b.append(ArcNode(int(id), word))
 
     if G != None:
-        yield G
+        yield {'graph': G, 'buffer': b}
     h.close()
 
 
@@ -162,12 +179,12 @@ if __name__ == "__main__":
 	testGraph.add_edge(5, 3)   # flight -> Huston
 	testGraph.add_edge(4, 5)   # through <- Huston
 
-	parser = ArcState(b, [ArcNode(0, "root")], [], verbose=True)
+	parser = ArcState(b, [ArcNode(0, "root")], [], testGraph, [], verbose=True)
 	while not parser.done():
-		parser = parser.do_action(parser.get_next_action(testGraph))
+		parser = parser.do_action(parser.get_next_action())
 
 	print("Done")
-	
+
 
 	"""
 	b = [ArcNode(1, "the"), \
@@ -214,4 +231,3 @@ if __name__ == "__main__":
 	parser = parser.arc_right()
 	parser = parser.done()
 	"""
-
