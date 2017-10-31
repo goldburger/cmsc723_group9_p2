@@ -4,9 +4,8 @@ from transparser import *
 
 # Eval function from project 1
 import sklearn.metrics
-def eval(gold_labels, predicted_labels):
-   return ( sklearn.metrics.f1_score(gold_labels, predicted_labels, average='micro'),
-        sklearn.metrics.f1_score(gold_labels, predicted_labels, average='macro') )
+def eval(gold, predicted):
+   return (sklearn.metrics.f1_score(gold, predicted, average='micro'), sklearn.metrics.f1_score(gold, predicted, average='macro'))
 
 # For labeled data, read in from CoNLL file and obtain tuples with configurations
 def process_labeled_set(filename):
@@ -27,6 +26,7 @@ def process_labeled_set(filename):
   print len(configs)
 
   return configs
+
 
 # Obtains list of feature vectors based on lists of config tuples
 # Note: config tuples are (stack, buffer, transition)
@@ -60,6 +60,7 @@ def make_feature_vec(configs):
     vec.append(next_vec)
   return vec
 
+
 # Given theta weights and feature vector list, predicts transition for each entry
 def predict_labels(transitions, theta, feature_vecs):
   labels = []
@@ -74,8 +75,10 @@ def predict_labels(transitions, theta, feature_vecs):
     labels.append(label)
   return labels
 
+
 # TODO: Currently has various pieces adapted from project 1 that need changing
-# Primary issue: stops with predicted transition "label", instead of using to run on test set; fix! TODO
+# TODO: Primary issue: has no stopping condition; should have one based in some way on accuracy of dev set parsing; fix!
+# TODO: Should run on test set before quitting when training has completed
 def perceptron(training_configs, dev_configs):
 
   transitions = [ArcState.ARC_LEFT, ArcState.ARC_RIGHT, ArcState.SHIFT]
@@ -103,11 +106,15 @@ def perceptron(training_configs, dev_configs):
   for i in range(0, len(training_configs)):
     indices.append(i)
 
-  # Initialize variables for dev results (i.e. choosing correct transition for dev set examples)
-  dev_results_prev = (0, 0)
-  dev_results = (0, 0)
-  predicted_labels_prev = []
-  predicted_labels = []
+  gen = iterCoNLL("en.dev")
+  # Holds tuples of {initial config, gold relation set} for each dev sentence
+  dev_golds = []
+  for s in gen:
+    state = ArcState(s['buffer'], [ArcNode(0, "*ROOT*")], [], s['graph'], [])
+    p = state
+    while not p.done():
+      p = p.do_action(p.get_next_action())
+    dev_golds.append({'config': state, 'relations': p.relations})
 
   # Main perceptron loop
   counter = 0
@@ -124,23 +131,37 @@ def perceptron(training_configs, dev_configs):
         for feature in m[t]:
           m_temp[t][feature] = m[t][feature] + theta[t][feature] * (counter - m_last_updated[t][feature])
           theta_temp[t][feature] = m_temp[t][feature] / counter
-      print "Results on training set: " + str(eval(training_labels, predict_labels(transitions, theta_temp, training_vec)))
+      print "Config transition accuracy on training set: " + str(eval(training_labels, predict_labels(transitions, theta_temp, training_vec)))
 
-      dev_results_prev = dev_results
-      predicted_labels_prev = predicted_labels
       predicted_labels = predict_labels(transitions, theta_temp, dev_vec)
       dev_results = eval(dev_labels, predicted_labels)
-      print "Results on dev set: " + str(dev_results)
+      print "Config transition accuracy on dev set: " + str(dev_results)
+    
+      # TODO: Use dev_golds and theta to obtain relation accuracy
+      correct = 0
+      total = 0
+      for gold in dev_golds:
+        p = gold['config']
+        while not p.done() and not p.failed:
+          scoring = defaultdict(int)
+          for t in transitions:
+            # TODO: As add extra features, add here too
+            scoring[t] += theta[t]['S_TOP_' + p.stack[0].word]
+            scoring[t] += theta[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
+            scoring[t] += theta[t]['B_HEAD_' + p.buffer[0].word]
+            scoring[t] += theta[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
+            scoring[t] += theta[t]['PAIR_WORDS_' + p.stack[0].word + '_' + p.buffer[0].word]
+            scoring[t] += theta[t]['PAIR_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
+          v = list(scoring.values())
+          k = list(scoring.keys())
+          yhat = k[v.index(max(v))]
+          p.do_action(yhat)
+        for relation in gold['relations']:
+          total += 1
+          if relation in p.relations:
+            correct += 1
+      print "Relation attachment score on dev set: " + str(float(correct)/total*100)
 
-      # Stopping condition when previous results exceed current
-      # Rolls back to previous results and halts in such a case
-      #if (dev_results_prev[0] > dev_results[0]):
-      #  print "Previous dev set result of " + str(dev_results_prev) + " exceeded current; rolling back to previous and stopping."
-      #  print "Final dev set accuracy: " + str(dev_results_prev)
-      #  # TODO: once one with dev set, use weights to run on test set; change return value, etc.
-      #  # Intermediate TODO: before actually use test set, evaluate actual performance on dev set with stuff like depeval
-      #  return
-      
       shuffle(indices)
 
     index = indices[counter % len(indices)]

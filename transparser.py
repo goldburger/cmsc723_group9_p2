@@ -21,7 +21,8 @@ class ArcState():
 		self.graph = graph
 		## List for the configuration + action items to be used for training
 		self.configs = configs
-
+    ## Value used to check if failed when trying to make a transition
+		self.failed = False
 
 	## Perform a left arc transition in this state
 	## Returns the resulting state
@@ -29,6 +30,10 @@ class ArcState():
 		new_buffer = list(self.buffer)
 		new_stack = list(self.stack)
 		new_rel = list(self.relations)
+
+		if len(self.stack) < 2:
+			self.failed = True
+			return ArcState(self.buffer, self.stack, self.relations, self.graph, self.configs, self.verbose)
 
 		w1 = self.stack[0]
 		w2 = self.stack[1]
@@ -51,6 +56,10 @@ class ArcState():
 		new_buffer = list(self.buffer)
 		new_stack = list(self.stack)
 		new_rel = list(self.relations)
+
+		if len(self.stack) < 2:
+			self.failed = True
+			return ArcState(self.buffer, self.stack, self.relations, self.graph, self.configs, self.verbose)
 
 		w1 = self.stack[0]
 		w2 = self.stack[1]
@@ -91,6 +100,7 @@ class ArcState():
 			return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
 
 		else:
+			self.failed = True
 			return ArcState([], [""], self.relations, self.graph, self.configs, self.verbose)
 
 	## Returns True is this is a valid final state, False otherwise
