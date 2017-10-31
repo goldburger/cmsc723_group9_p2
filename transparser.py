@@ -33,7 +33,7 @@ class ArcState():
 
 		if len(self.stack) < 2:
 			self.failed = True
-			return ArcState(self.buffer, self.stack, self.relations, self.graph, self.configs, self.verbose)
+			return self
 
 		w1 = self.stack[0]
 		w2 = self.stack[1]
@@ -59,7 +59,7 @@ class ArcState():
 
 		if len(self.stack) < 2:
 			self.failed = True
-			return ArcState(self.buffer, self.stack, self.relations, self.graph, self.configs, self.verbose)
+			return self
 
 		w1 = self.stack[0]
 		w2 = self.stack[1]
@@ -101,7 +101,9 @@ class ArcState():
 
 		else:
 			self.failed = True
-			return ArcState([], [""], self.relations, self.graph, self.configs, self.verbose)
+			self.buffer = []
+			self.stack = [""]
+			return self
 
 	## Returns True is this is a valid final state, False otherwise
 	def done(self):

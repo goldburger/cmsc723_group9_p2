@@ -146,16 +146,21 @@ def perceptron(training_configs, dev_configs):
           scoring = defaultdict(int)
           for t in transitions:
             # TODO: As add extra features, add here too
-            scoring[t] += theta[t]['S_TOP_' + p.stack[0].word]
-            scoring[t] += theta[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
-            scoring[t] += theta[t]['B_HEAD_' + p.buffer[0].word]
-            scoring[t] += theta[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
-            scoring[t] += theta[t]['PAIR_WORDS_' + p.stack[0].word + '_' + p.buffer[0].word]
-            scoring[t] += theta[t]['PAIR_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
+            if (len(p.stack) > 0):
+              scoring[t] += theta[t]['S_TOP_' + p.stack[0].word]
+              scoring[t] += theta[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
+            if (len(p.buffer) > 0):
+              scoring[t] += theta[t]['B_HEAD_' + p.buffer[0].word]
+              scoring[t] += theta[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
+            if (len(p.stack) > 0 and len(p.buffer) > 0):
+              scoring[t] += theta[t]['PAIR_WORDS_' + p.stack[0].word + '_' + p.buffer[0].word]
+              scoring[t] += theta[t]['PAIR_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
           v = list(scoring.values())
           k = list(scoring.keys())
+          # TODO: In case of ties, which transition should be default?
+          # This choice seems important...
           yhat = k[v.index(max(v))]
-          p.do_action(yhat)
+          p = p.do_action(yhat)
         for relation in gold['relations']:
           total += 1
           if relation in p.relations:
