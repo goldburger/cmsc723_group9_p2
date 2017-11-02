@@ -2,6 +2,8 @@ from collections import defaultdict
 from random import shuffle
 from transparser import *
 
+import pdb
+
 # Eval function from project 1
 import sklearn.metrics
 def eval(gold, predicted):
@@ -34,10 +36,10 @@ def process_labeled_set(filename):
 # TODO: Add extra features for later in project
 # TODO: See if performance changes with symmetric pairs
 def make_feature_vec(configs):
-  factor = 1
+  factor = 10.
   vec = []
   for config in configs:
-    next_vec = defaultdict(int)
+    next_vec = defaultdict(float)
     if len(config[0]) > 0:
       attr = config[0][0]
       # Identity of word at top of stack
@@ -65,7 +67,7 @@ def make_feature_vec(configs):
 def predict_labels(transitions, theta, feature_vecs):
   labels = []
   for i in range(0, len(feature_vecs)):
-    scoring = defaultdict(int)
+    scoring = defaultdict(float)
     for transition in transitions:
       for feature in feature_vecs[i]:
         scoring[transition] += feature_vecs[i][feature] * theta[transition][feature]
@@ -88,9 +90,9 @@ def perceptron(training_configs, dev_configs):
   m = dict()
   m_last_updated = dict()
   for t in transitions:
-    theta[t] = defaultdict(int)
-    m[t] = defaultdict(int)
-    m_last_updated[t] = defaultdict(int)
+    theta[t] = defaultdict(float)
+    m[t] = defaultdict(float)
+    m_last_updated[t] = defaultdict(float)
 
   training_vec = make_feature_vec(training_configs)
   dev_vec = make_feature_vec(dev_configs)
@@ -125,8 +127,8 @@ def perceptron(training_configs, dev_configs):
       m_temp = dict()
       theta_temp = dict()
       for t in transitions:
-        m_temp[t] = defaultdict(int)
-        theta_temp[t] = defaultdict(int)
+        m_temp[t] = defaultdict(float)
+        theta_temp[t] = defaultdict(float)
         # Obtain weights from running average before evaluating
         for feature in m[t]:
           m_temp[t][feature] = m[t][feature] + theta[t][feature] * (counter - m_last_updated[t][feature])
@@ -137,24 +139,24 @@ def perceptron(training_configs, dev_configs):
       dev_results = eval(dev_labels, predicted_labels)
       print "Config transition accuracy on dev set: " + str(dev_results)
     
-      # TODO: Use dev_golds and theta to obtain relation accuracy
       correct = 0
       total = 0
       for gold in dev_golds:
+        #pdb.set_trace()
         p = gold['config']
         while not p.done() and not p.failed:
-          scoring = defaultdict(int)
+          scoring = defaultdict(float)
           for t in transitions:
             # TODO: As add extra features, add here too
             if (len(p.stack) > 0):
-              scoring[t] += theta[t]['S_TOP_' + p.stack[0].word]
-              scoring[t] += theta[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
+              scoring[t] += theta_temp[t]['S_TOP_' + p.stack[0].word]
+              scoring[t] += theta_temp[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
             if (len(p.buffer) > 0):
-              scoring[t] += theta[t]['B_HEAD_' + p.buffer[0].word]
-              scoring[t] += theta[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
+              scoring[t] += theta_temp[t]['B_HEAD_' + p.buffer[0].word]
+              scoring[t] += theta_temp[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
             if (len(p.stack) > 0 and len(p.buffer) > 0):
-              scoring[t] += theta[t]['PAIR_WORDS_' + p.stack[0].word + '_' + p.buffer[0].word]
-              scoring[t] += theta[t]['PAIR_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
+              scoring[t] += theta_temp[t]['PAIR_WORDS_' + p.stack[0].word + '_' + p.buffer[0].word]
+              scoring[t] += theta_temp[t]['PAIR_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
           v = list(scoring.values())
           k = list(scoring.keys())
           # TODO: In case of ties, which transition should be default?
@@ -172,7 +174,7 @@ def perceptron(training_configs, dev_configs):
     index = indices[counter % len(indices)]
 
     # Obtain predicted based on argmax of score for each class
-    scoring = defaultdict(int)
+    scoring = defaultdict(float)
     for t in transitions:
       for feature in training_vec[index]:
         scoring[t] += training_vec[index][feature] * theta[t][feature]
