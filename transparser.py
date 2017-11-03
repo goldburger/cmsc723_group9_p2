@@ -21,8 +21,18 @@ class ArcState():
 		self.graph = graph
 		## List for the configuration + action items to be used for training
 		self.configs = configs
-    ## Value used to check if failed when trying to make a transition
+	## Value used to check if failed when trying to make a transition
 		self.failed = False
+
+	## Creates the initial state for the parser based on a given graph
+	def initialize_from_graph(graph):
+		b = []
+		for id in G.nodes():
+			b.append(ArcNode(id), G.node[id]['word'])
+
+		state = ArcState(b, [ArcNode(0, "root")], [])
+		return state
+
 
 	## Perform a left arc transition in this state
 	## Returns the resulting state
@@ -44,9 +54,9 @@ class ArcState():
 		if self.verbose:
 			print("{0} : {1} | ({2} <- {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_LEFT"))
 
- 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
- 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
- 		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_LEFT))
+		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
+		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_LEFT))
 
 		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
 
@@ -70,9 +80,9 @@ class ArcState():
 		if self.verbose:
 			print("{0} : {1} | ({2} -> {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_RIGHT"))
 
- 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
- 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
- 		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_RIGHT))
+		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
+		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_RIGHT))
 
 		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
 
@@ -93,10 +103,10 @@ class ArcState():
 			if self.verbose:
 				print("{0} : {1} - {2}".format([w.word for w in self.stack], [w.word for w in self.buffer], "SHIFT"))
 
- 			stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
- 			buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
- 			self.configs.append((stack_detailed, buffer_detailed, ArcState.SHIFT))
-    
+			stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
+			buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+			self.configs.append((stack_detailed, buffer_detailed, ArcState.SHIFT))
+	
 			return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
 
 		else:
@@ -144,40 +154,65 @@ class ArcState():
 
 
 def iterCoNLL(filename):
-    h = open(filename, 'r')
-    G = None
-    b = []
-    nn = 0
-    for l in h:
-        l = l.strip()
-        if l == "":
-            if G != None:
-                yield {'graph': G, 'buffer': b}
-            G = None
-            b = []
-        else:
-            if G == None:
-                nn = nn + 1
-                G = nx.DiGraph()
-                G.add_node(0, attr_dict={'word': '*root*', 'lemma': '*root*', 'cpos': '*root*', 'pos': '*root*', 'feats': '*root*'})
-                newGraph = False
-            # TODO: Record all parts of split line in graph, to allow accessing for extra features for latter part of project
-            [id, word, lemma, cpos, pos, feats, head, drel, phead, pdrel] = l.split('\t')
-            G.add_node(int(id), attr_dict={'word' : word,
-                                 'lemma': lemma,
-                                 'cpos' : cpos,
-                                 'pos'  : pos,
-                                 'feats': feats})
-            G.add_edge(int(id), int(head)) # 'true_rel': drel, 'true_par': int(id)})
-            b.append(ArcNode(int(id), word))
+	h = open(filename, 'r')
+	G = None
+	b = []
+	nn = 0
+	for l in h:
+		l = l.strip()
+		if l == "":
+			if G != None:
+				yield {'graph': G, 'buffer': b}
+			G = None
+			b = []
+		else:
+			if G == None:
+				nn = nn + 1
+				G = nx.DiGraph()
+				G.add_node(0, {'word': '*root*', 'lemma': '*root*', 'cpos': '*root*', 'pos': '*root*', 'feats': '*root*'})
+				newGraph = False
+			# TODO: Record all parts of split line in graph, to allow accessing for extra features for latter part of project
+			[id, word, lemma, cpos, pos, feats, head, drel, phead, pdrel] = l.split('\t')
+			G.add_node(int(id), {'word' : word,
+								 'lemma': lemma,
+								 'cpos' : cpos,
+								 'pos'  : pos,
+								 'feats': feats})
+			G.add_edge(int(id), int(head)) # 'true_rel': drel, 'true_par': int(id)})
+			b.append(ArcNode(int(id), word))
 
-    if G != None:
-        yield {'graph': G, 'buffer': b}
-    h.close()
+	if G != None:
+		yield {'graph': G, 'buffer': b}
+	h.close()
 
 
+import sys
+import csv
 if __name__ == "__main__":
 
+	file_train = sys.argv[1]
+	file_test = sys.argv[2]
+	file_out = sys.argv[3]
+
+	print(file_train)
+
+
+	with open(file_out, 'wb') as csvfile:
+		writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+		for ex in iterCoNLL(file_train):
+			G = ex['graph']
+			B = ex['buffer']
+
+			for id in G.nodes():
+				if id != 0:
+					head = G.edges(id)[0][1]
+					writer.writerow([id, G.node[id]['word']] + ['_']*4 + [head] + ['_']*3 )
+			writer.writerow([])
+
+
+
+	"""
 	b = [ArcNode(1, "book"), \
 	ArcNode(2, "the"), \
 	ArcNode(3, "flight"), \
@@ -203,6 +238,7 @@ if __name__ == "__main__":
 		parser = parser.do_action(parser.get_next_action())
 
 	print("Done")
+	"""
 
 
 	"""
