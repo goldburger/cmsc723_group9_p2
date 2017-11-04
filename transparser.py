@@ -44,8 +44,8 @@ class ArcState():
 		if self.verbose:
 			print("{0} : {1} | ({2} <- {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_LEFT"))
 
- 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
- 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+ 		stack_detailed = [self.graph.node[i.id] for i in self.stack]
+ 		buffer_detailed = [self.graph.node[i.id] for i in self.buffer]
  		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_LEFT))
 
 		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
@@ -70,8 +70,8 @@ class ArcState():
 		if self.verbose:
 			print("{0} : {1} | ({2} -> {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_RIGHT"))
 
- 		stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
- 		buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+ 		stack_detailed = [self.graph.node[i.id] for i in self.stack]
+ 		buffer_detailed = [self.graph.node[i.id] for i in self.buffer]
  		self.configs.append((stack_detailed, buffer_detailed, ArcState.ARC_RIGHT))
 
 		return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
@@ -93,8 +93,8 @@ class ArcState():
 			if self.verbose:
 				print("{0} : {1} - {2}".format([w.word for w in self.stack], [w.word for w in self.buffer], "SHIFT"))
 
- 			stack_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.stack]
- 			buffer_detailed = [self.graph.node[i.id]['attr_dict'] for i in self.buffer]
+ 			stack_detailed = [self.graph.node[i.id] for i in self.stack]
+ 			buffer_detailed = [self.graph.node[i.id] for i in self.buffer]
  			self.configs.append((stack_detailed, buffer_detailed, ArcState.SHIFT))
     
 			return ArcState(new_buffer, new_stack, new_rel, self.graph, self.configs, self.verbose)
@@ -159,11 +159,11 @@ def iterCoNLL(filename):
             if G == None:
                 nn = nn + 1
                 G = nx.DiGraph()
-                G.add_node(0, attr_dict={'word': '*root*', 'lemma': '*root*', 'cpos': '*root*', 'pos': '*root*', 'feats': '*root*'})
+                G.add_node(0, {'word': '*root*', 'lemma': '*root*', 'cpos': '*root*', 'pos': '*root*', 'feats': '*root*'})
                 newGraph = False
             # TODO: Record all parts of split line in graph, to allow accessing for extra features for latter part of project
             [id, word, lemma, cpos, pos, feats, head, drel, phead, pdrel] = l.split('\t')
-            G.add_node(int(id), attr_dict={'word' : word,
+            G.add_node(int(id), {'word' : word,
                                  'lemma': lemma,
                                  'cpos' : cpos,
                                  'pos'  : pos,
@@ -185,12 +185,12 @@ if __name__ == "__main__":
 	ArcNode(5, "Huston")]
 
 	testGraph = nx.DiGraph()
-	testGraph.add_node(0, attr_dict={'word': '*root*',   'pos': '*root*'})
-	testGraph.add_node(1, attr_dict={'word': 'book',      'pos': 'DT'})
-	testGraph.add_node(2, attr_dict={'word': 'the',    'pos': 'JJ'})
-	testGraph.add_node(3, attr_dict={'word': 'flight',  'pos': 'NN'})
-	testGraph.add_node(4, attr_dict={'word': 'through',      'pos': 'VB'})
-	testGraph.add_node(5, attr_dict={'word': 'Huston',    'pos': 'JJ'})
+	testGraph.add_node(0, {'word': '*root*',   'pos': '*root*'})
+	testGraph.add_node(1, {'word': 'book',      'pos': 'DT'})
+	testGraph.add_node(2, {'word': 'the',    'pos': 'JJ'})
+	testGraph.add_node(3, {'word': 'flight',  'pos': 'NN'})
+	testGraph.add_node(4, {'word': 'through',      'pos': 'VB'})
+	testGraph.add_node(5, {'word': 'Huston',    'pos': 'JJ'})
 
 	testGraph.add_edge(1, 0)   # root -> book
 	testGraph.add_edge(3, 1)   # book -> flight
