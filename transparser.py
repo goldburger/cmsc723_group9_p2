@@ -365,7 +365,12 @@ if __name__ == "__main__":
 							break
 
 					## Write the result to the output file
-					writer.writerow([id, graph.node[id]['word']] + ['_']*4 + [head] + ['_']*3 )
+					word = graph.node[id]['word']
+					lemma = graph.node[id]['lemma']
+					cpos = graph.node[id]['cpos']
+					pos = graph.node[id]['pos']
+					feats = graph.node[id]['feats']
+					writer.writerow([id, word, lemma, cpos, pos, feats, head, '_', '_', '_'])
 
 			except Exception as ex:
 				print(ex)
