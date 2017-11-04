@@ -2,8 +2,6 @@ from collections import defaultdict
 from random import shuffle
 from transparser import *
 
-import pdb
-
 # Eval function from project 1
 import sklearn.metrics
 def eval(gold, predicted):
@@ -36,7 +34,7 @@ def process_labeled_set(filename):
 # TODO: Add extra features for later in project
 # TODO: See if performance changes with symmetric pairs
 def make_feature_vec(configs):
-  factor = 10.
+  factor = 1.
   vec = []
   for config in configs:
     next_vec = defaultdict(float)
@@ -46,19 +44,17 @@ def make_feature_vec(configs):
       next_vec['S_TOP_' + attr['word']] = factor
       # Coarse POS for word at top of stack
       next_vec['S_TOP_POS_' + attr['cpos']] = factor
-    if len(config[1]) > 0:
-      attr = config[1][0]
-      # Indentity of word at head of buffer
-      next_vec['B_HEAD_' + attr['word']] = factor
-      # Coarse POS for word at head of buffer
-      next_vec['B_HEAD_POS_' + attr['cpos']] = factor
-    if len(config[0]) > 0 and len(config[1]) > 0:
+    if len(config[0]) > 1:
+      attr = config[0][1]
+      # Indentity of word second in stack
+      next_vec['S_SECOND_' + attr['word']] = factor
+      # Coarse POS for word second in stack
+      next_vec['S_SECOND_POS_' + attr['cpos']] = factor
       attr0 = config[0][0]
-      attr1 = config[1][0]
-      # Pair of words at top of stack and head of buffer (currently not symmetric)
-      next_vec['PAIR_WORDS_' + attr0['word'] + '_' + attr1['word']] = factor
-      # Pair of POS at top of stack and head of buffer (currently not symmetric)
-      next_vec['PAIR_POS_' + attr0['cpos'] + '_' + attr1['cpos']] = factor
+      # Pair of words at top of stack (currently not symmetric)
+      next_vec['PAIR_WORDS_' + attr['word'] + '_' + attr0['word']] = factor
+      # Pair of POS at top of stack (currently not symmetric)
+      next_vec['PAIR_POS_' + attr['cpos'] + '_' + attr0['cpos']] = factor
     vec.append(next_vec)
   return vec
 
@@ -142,7 +138,6 @@ def perceptron(training_configs, dev_configs):
       correct = 0
       total = 0
       for gold in dev_golds:
-        #pdb.set_trace()
         p = gold['config']
         while not p.done() and not p.failed:
           scoring = defaultdict(float)
@@ -151,12 +146,11 @@ def perceptron(training_configs, dev_configs):
             if (len(p.stack) > 0):
               scoring[t] += theta_temp[t]['S_TOP_' + p.stack[0].word]
               scoring[t] += theta_temp[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
-            if (len(p.buffer) > 0):
-              scoring[t] += theta_temp[t]['B_HEAD_' + p.buffer[0].word]
-              scoring[t] += theta_temp[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
-            if (len(p.stack) > 0 and len(p.buffer) > 0):
-              scoring[t] += theta_temp[t]['PAIR_WORDS_' + p.stack[0].word + '_' + p.buffer[0].word]
-              scoring[t] += theta_temp[t]['PAIR_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.buffer[0].id]['attr_dict']['cpos']]
+            if (len(p.stack) > 1):
+              scoring[t] += theta_temp[t]['S_SECOND_' + p.stack[1].word]
+              scoring[t] += theta_temp[t]['S_SECOND_POS_' + p.graph.node[p.stack[1].id]['attr_dict']['cpos']]
+              scoring[t] += theta_temp[t]['PAIR_WORDS_' + p.stack[1].word + '_' + p.stack[0].word]
+              scoring[t] += theta_temp[t]['PAIR_POS_' + p.graph.node[p.stack[1].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
           v = list(scoring.values())
           k = list(scoring.keys())
           # TODO: In case of ties, which transition should be default?
