@@ -158,12 +158,12 @@ class ArcStateFeatures():
 			#coarse POS (field 4) of word at top of the stack
 			self.dict["s1_pos="+s1.pos] = 1.0
 
-		if (len(state.buffer) > 0):
-			b1 = state.buffer[0]
-			#identity of word at head of buffer
-			self.dict["b1="+b1.word] = 1.0
-			#coarse POS (field 4) of word at head of buffer
-			self.dict["b1_pos="+b1.pos] = 1.0
+		if (len(state.stack) > 1):
+			s2 = state.stack[1]
+			#identity of second word in stack
+			self.dict["s2="+s2.word] = 1.0
+			#coarse POS (field 4) of second word in stack
+			self.dict["s2_pos="+s2.pos] = 1.0
 
 		if (len(state.stack) > 1):
 			s2 = state.stack[1]
@@ -171,6 +171,13 @@ class ArcStateFeatures():
 			self.dict["s1_s2="+s1.word+"_"+s2.word] = 1.0
 			#pair of coarse POS (field 4) at top of stack
 			self.dict["s1_s2_pos="+s1.pos+"_"+s2.pos] = 1.0
+
+		#if (len(state.buffer) > 0):
+		#	b1 = state.buffer[0]
+		#	#identity of word at head of buffer
+		#	self.dict["b1="+b1.word] = 1.0
+		#	#coarse POS (field 4) of word at head of buffer
+		#	self.dict["b1_pos="+b1.pos] = 1.0
 
 		#if (len(state.buffer) > 1):
 		#	b2 = state.buffer[1]
@@ -300,7 +307,7 @@ if __name__ == "__main__":
 	## Initialize the perceptron
 	actions = [ArcState.ARC_LEFT, ArcState.ARC_RIGHT, ArcState.SHIFT]
 	perceptron = Perceptron(actions)
-	num_iter = 10
+	num_iter = 3
 
 	## Train
 	print("Start Training")	
