@@ -44,6 +44,13 @@ def make_feature_vec(configs):
       next_vec['S_TOP_' + attr['word']] = factor
       # Coarse POS for word at top of stack
       next_vec['S_TOP_POS_' + attr['cpos']] = factor
+    # Use of buffer for features is an extra feature for later part
+    if len(config[1]) > 0:
+      attr = config[1][0]
+      # Indentity of word at head of buffer
+      next_vec['B_HEAD_' + attr['word']] = factor
+      # Coarse POS for word at head of buffer
+      next_vec['B_HEAD_POS_' + attr['cpos']] = factor
     if len(config[0]) > 1:
       attr = config[0][1]
       # Indentity of word second in stack
@@ -145,12 +152,16 @@ def perceptron(training_configs, dev_configs):
             # TODO: As add extra features, add here too
             if (len(p.stack) > 0):
               scoring[t] += theta_temp[t]['S_TOP_' + p.stack[0].word]
-              scoring[t] += theta_temp[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
+              scoring[t] += theta_temp[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['cpos']]
+            # Use of buffer for features is an extra feature for later part
+            if (len(p.buffer) > 0):
+              scoring[t] += theta_temp[t]['B_HEAD_' + p.buffer[0].word]
+              scoring[t] += theta_temp[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['cpos']]
             if (len(p.stack) > 1):
               scoring[t] += theta_temp[t]['S_SECOND_' + p.stack[1].word]
-              scoring[t] += theta_temp[t]['S_SECOND_POS_' + p.graph.node[p.stack[1].id]['attr_dict']['cpos']]
+              scoring[t] += theta_temp[t]['S_SECOND_POS_' + p.graph.node[p.stack[1].id]['cpos']]
               scoring[t] += theta_temp[t]['PAIR_WORDS_' + p.stack[1].word + '_' + p.stack[0].word]
-              scoring[t] += theta_temp[t]['PAIR_POS_' + p.graph.node[p.stack[1].id]['attr_dict']['cpos'] + '_' + p.graph.node[p.stack[0].id]['attr_dict']['cpos']]
+              scoring[t] += theta_temp[t]['PAIR_POS_' + p.graph.node[p.stack[1].id]['cpos'] + '_' + p.graph.node[p.stack[0].id]['cpos']]
           v = list(scoring.values())
           k = list(scoring.keys())
           # TODO: In case of ties, which transition should be default?
@@ -197,7 +208,7 @@ def perceptron(training_configs, dev_configs):
 
 if __name__ == "__main__":
 
-  training = process_labeled_set("en.tr100")
+  training = process_labeled_set("en.tr")
   dev = process_labeled_set("en.dev")
 
   perceptron(training, dev)
