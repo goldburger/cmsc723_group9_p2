@@ -1,5 +1,4 @@
 import sys
-import pdb
 import csv
 import depeval
 from collections import defaultdict
@@ -200,7 +199,6 @@ def eval(gold, predicted):
 # For labeled data, read in from CoNLL file and obtain tuples with configurations
 def process_labeled_set(filename):
   gen = iterCoNLL(filename)
-
   configs = []
   for s in gen:
     parser = ArcState(s['buffer'], [ArcNode(0, "*ROOT*")], [], s['graph'], [])
@@ -208,8 +206,7 @@ def process_labeled_set(filename):
       parser = parser.do_action(parser.get_next_action())
     for config in parser.configs:
       configs.append(config)
-
-  print "Read " + str(len(configs)) + " configs for " + filename
+  #print "Read " + str(len(configs)) + " configs for " + filename
   return configs
 
 
@@ -248,24 +245,48 @@ def make_feature_vec(configs):
     vec.append(next_vec)
   return vec
 
+# Given starting ArcState, uses theta as oracle to run arc-standard transitions
+# Returns final ArcState with accumulated transitions from process
+def score_with_features(p, theta, transitions):
+  while not p.done() and not p.failed:
+    scores = defaultdict(float)
+    for t in transitions:
+      # TODO: As add extra features, add here too
+      if (len(p.stack) > 0):
+        scores[t] += theta[t]['S_TOP_' + p.stack[0].word]
+        scores[t] += theta[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['cpos']]
+      # Use of buffer for features is an extra feature for later part
+      if (len(p.buffer) > 0):
+        scores[t] += theta[t]['B_HEAD_' + p.buffer[0].word]
+        scores[t] += theta[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['cpos']]
+      if (len(p.stack) > 1):
+        scores[t] += theta[t]['S_SECOND_' + p.stack[1].word]
+        scores[t] += theta[t]['S_SECOND_POS_' + p.graph.node[p.stack[1].id]['cpos']]
+        scores[t] += theta[t]['PAIR_WORDS_' + p.stack[1].word + '_' + p.stack[0].word]
+        scores[t] += theta[t]['PAIR_POS_' + p.graph.node[p.stack[1].id]['cpos'] + '_' + p.graph.node[p.stack[0].id]['cpos']]
+    v = list(scores.values())
+    k = list(scores.keys())
+    yhat = k[v.index(max(v))]
+    p = p.do_action(yhat)
+  return p
+
 
 # Given theta weights and feature vector list, predicts transition for each entry
 def predict_labels(transitions, theta, feature_vecs):
   labels = []
   for i in range(0, len(feature_vecs)):
-    scoring = defaultdict(float)
+    scores = defaultdict(float)
     for transition in transitions:
       for feature in feature_vecs[i]:
-        scoring[transition] += feature_vecs[i][feature] * theta[transition][feature]
-    v = list(scoring.values())
-    k = list(scoring.keys())
+        scores[transition] += feature_vecs[i][feature] * theta[transition][feature]
+    v = list(scores.values())
+    k = list(scores.keys())
     label = k[v.index(max(v))]
     labels.append(label)
   return labels
 
 
-# TODO: Should run on test set before quitting when training has completed
-def perceptron(training_configs, dev_configs, test_configs):
+def perceptron(training_configs, dev_configs, testfile, testout, eval_dev):
 
   transitions = [ArcState.ARC_LEFT, ArcState.ARC_RIGHT, ArcState.SHIFT]
 
@@ -303,10 +324,10 @@ def perceptron(training_configs, dev_configs, test_configs):
     dev_golds.append({'config': state, 'relations': p.relations})
 
   # Initialize variables for holding best-performing dev relations
-  # TODO: Need to store best theta_temp too! This is what matters for test set
   best_dev_results = 0.
   best_dev_iteration = 0
   best_dev_relations = []
+  best_theta = dict()
 
   # Main perceptron loop
   counter = 0
@@ -324,37 +345,14 @@ def perceptron(training_configs, dev_configs, test_configs):
         for feature in m[t]:
           m_temp[t][feature] = m[t][feature] + theta[t][feature] * (counter - m_last_updated[t][feature])
           theta_temp[t][feature] = m_temp[t][feature] / counter
-      #print "Config transition accuracy on training set: " + str(eval(training_labels, predict_labels(transitions, theta_temp, training_vec)))
-
-      #predicted_labels = predict_labels(transitions, theta_temp, dev_vec)
-      #dev_results = eval(dev_labels, predicted_labels)
-      #print "Config transition accuracy on dev set: " + str(dev_results)
+      #print "Training set config accuracy: " + str(eval(training_labels, predict_labels(transitions, theta_temp, training_vec)))
+      #print "Dev set config accuracy: " + str(eval(dev_labels, predict_labels(transitions, theta_temp, dev_vec)))
 
       correct = 0
       total = 0
       current_dev_relations = []
       for gold in dev_golds:
-        p = gold['config']
-        while not p.done() and not p.failed:
-          scoring = defaultdict(float)
-          for t in transitions:
-            # TODO: As add extra features, add here too
-            if (len(p.stack) > 0):
-              scoring[t] += theta_temp[t]['S_TOP_' + p.stack[0].word]
-              scoring[t] += theta_temp[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['cpos']]
-            # Use of buffer for features is an extra feature for later part
-            if (len(p.buffer) > 0):
-              scoring[t] += theta_temp[t]['B_HEAD_' + p.buffer[0].word]
-              scoring[t] += theta_temp[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['cpos']]
-            if (len(p.stack) > 1):
-              scoring[t] += theta_temp[t]['S_SECOND_' + p.stack[1].word]
-              scoring[t] += theta_temp[t]['S_SECOND_POS_' + p.graph.node[p.stack[1].id]['cpos']]
-              scoring[t] += theta_temp[t]['PAIR_WORDS_' + p.stack[1].word + '_' + p.stack[0].word]
-              scoring[t] += theta_temp[t]['PAIR_POS_' + p.graph.node[p.stack[1].id]['cpos'] + '_' + p.graph.node[p.stack[0].id]['cpos']]
-          v = list(scoring.values())
-          k = list(scoring.keys())
-          yhat = k[v.index(max(v))]
-          p = p.do_action(yhat)
+        p = score_with_features(gold['config'], theta_temp, transitions)
         for relation in gold['relations']:
           total += 1
           if relation in p.relations:
@@ -365,26 +363,44 @@ def perceptron(training_configs, dev_configs, test_configs):
         best_dev_results = current_dev_results
         best_dev_relations = current_dev_relations
         best_dev_iteration = iteration
+        best_theta = theta_temp
       elif (iteration - best_dev_iteration >= 5):
         print "Stopping; will use best dev result of " + str(best_dev_results) + " from iteration " + str(best_dev_iteration)
-        # TODO: Do various things for test set and writing to file here
         # Test: write to file dev results
-        sentences = read_sentences("en.dev")
-        for i in range(0, len(sentences)):
-          for j in range(0, len(sentences[i])):
-            sentences[i][j][6] = ""
-          #pdb.set_trace()
-          for relation in current_dev_relations[i]:
-            # Writes the head number for the words that have relations
-            # Ugly indexing though...
-            sentences[i][relation[1]-1][6] = str(relation[0])
-        with open("output.txt", 'wb') as csvfile:
-          writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-          for sentence in sentences:
-            for word in sentence:
-              writer.writerow(word)
-            writer.writerow([])
-        depeval.eval("en.dev", "output.txt")
+        if eval_dev:
+          sentences = read_sentences("en.dev")
+          for i in range(0, len(sentences)):
+            for j in range(0, len(sentences[i])):
+              sentences[i][j][6] = ""
+            for relation in current_dev_relations[i]:
+              # Writes the head number for the words that have relations
+              # Ugly indexing though...
+              sentences[i][relation[1]-1][6] = str(relation[0])
+          with open("en.dev.out", 'wb') as csvfile:
+            writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for sentence in sentences:
+              for word in sentence:
+                writer.writerow(word)
+              writer.writerow([])
+          depeval.eval("en.dev", "en.dev.out")
+        # Code to write to testout results on test sentences
+        else:
+          gen = iterCoNLL(testfile)
+          test_relations = []
+          for s in gen:
+            state = ArcState(s['buffer'], [ArcNode(0, "*ROOT*")], [], s['graph'], [])
+            p = score_with_features(state, best_theta, transitions)
+            test_relations.append(p.relations)
+          sentences = read_sentences(testfile)
+          for i in range(0, len(sentences)):
+            for relation in test_relations[i]:
+              sentences[i][relation[1]-1][6] = str(relation[0])
+          with open(testout, 'wb') as csvfile:
+            writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for sentence in sentences:
+              for word in sentence:
+                writer.writerow(word)
+              writer.writerow([])
         return
       print "Relation attachment score on dev set: " + str(current_dev_results)
 
@@ -394,12 +410,12 @@ def perceptron(training_configs, dev_configs, test_configs):
     index = indices[counter % len(indices)]
 
     # Obtain predicted based on argmax of score for each class
-    scoring = defaultdict(float)
+    scores = defaultdict(float)
     for t in transitions:
       for feature in training_vec[index]:
-        scoring[t] += training_vec[index][feature] * theta[t][feature]
-    v = list(scoring.values())
-    k = list(scoring.keys())
+        scores[t] += training_vec[index][feature] * theta[t][feature]
+    v = list(scores.values())
+    k = list(scores.keys())
     yhat = k[v.index(max(v))]
 
     # If prediction is wrong, update weight vector
@@ -429,6 +445,6 @@ if __name__ == "__main__":
 
   training = process_labeled_set(file_train)
   dev = process_labeled_set("en.dev")
-  test = process_labeled_set(file_test)
 
-  perceptron(training, dev, test)
+  eval_dev = True
+  perceptron(training, dev, file_test, file_out, eval_dev)
