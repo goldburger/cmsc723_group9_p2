@@ -1,0 +1,5 @@
+The first change we made was running using the larger training set, en.tr, instead of the smaller en.tr100 set. This change resulted in a modest improvement in performance, approximately 10 percentage points for the dev set over our baseline for the previous part (which was ~35% attachment accuracy).
+
+In addition to using the larger training set, we implemented two additional features, based on checking the word at the head of the buffer and the coarse POS of the head of the buffer. (Note: our implementation of arc-standard for the previous part used the first formulation of arc-standard presented in the lecture slides, which manipulates the two top items in the stack when creating arcs. Our features for the transparser.py code therefore used the pair from the top of the stack instead of the top of stack + head of buffer.) These two simple features improved performance signficantly from the previous baseline, reaching ~63% attachment accuracy on the dev set with this change alone.
+
+Combining the above changes resulted in improvement above the goal of 70% on the dev set, yielding roughly 72% performance on average.
