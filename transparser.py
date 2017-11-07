@@ -211,8 +211,7 @@ def process_labeled_set(filename):
 
 
 # Obtains list of feature vectors made of config (stack, buffer, transition) tuples
-# Currently implements "basic features" of second part of project
-# TODO: Add extra features for later in project
+# Implements "basic features" of second part of project
 def make_feature_vec(configs):
   factor = 1.
   vec = []
@@ -224,13 +223,6 @@ def make_feature_vec(configs):
       next_vec['S_TOP_' + attr['word']] = factor
       # Coarse POS for word at top of stack
       next_vec['S_TOP_POS_' + attr['cpos']] = factor
-    # Use of buffer for features is an extra feature for later part
-    if len(config[1]) > 0:
-      attr = config[1][0]
-      # Indentity of word at head of buffer
-      next_vec['B_HEAD_' + attr['word']] = factor
-      # Coarse POS for word at head of buffer
-      next_vec['B_HEAD_POS_' + attr['cpos']] = factor
     if len(config[0]) > 1:
       attr = config[0][1]
       # Indentity of word second in stack
@@ -251,14 +243,9 @@ def score_with_features(p, theta, transitions):
   while not p.done() and not p.failed:
     scores = defaultdict(float)
     for t in transitions:
-      # TODO: As add extra features, add here too
       if (len(p.stack) > 0):
         scores[t] += theta[t]['S_TOP_' + p.stack[0].word]
         scores[t] += theta[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['cpos']]
-      # Use of buffer for features is an extra feature for later part
-      if (len(p.buffer) > 0):
-        scores[t] += theta[t]['B_HEAD_' + p.buffer[0].word]
-        scores[t] += theta[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['cpos']]
       if (len(p.stack) > 1):
         scores[t] += theta[t]['S_SECOND_' + p.stack[1].word]
         scores[t] += theta[t]['S_SECOND_POS_' + p.graph.node[p.stack[1].id]['cpos']]
