@@ -72,19 +72,13 @@ def computeFullGraph(inputGraph):
                       
     return out
 
-# we can see what this is doing with:
-#   >>> computeWeightedGraph(testGraph)[0][5]
-#   {'w_pair=*root*_tasty': 1.0, 'p_pair=*root*_JJ': 1.0, 'dist=5': 1.0, 'weight': 0.0}
-
-
 
 # we need a function that will score the edges according to our
 # current weight vector:
 def computeGraphEdgeWeights(graph, weights):
     for i,j in graph.edges_iter():
         graph[i][j]['weight'] = 0.   # make sure it doesn't make its way into the dot product
-        # TODO: your code here
-        graph[i][j]['weight'] = something_you_need_to_compute
+        graph[i][j]['weight'] = weights.dotProduct(graph[i][j])
 
         
 # once we have a graph with weights on the edges, we need to be able
@@ -115,14 +109,14 @@ def perceptronUpdate(weights, G, true, pred):
     # first, iterate over all the edges in the predicted tree that
     # aren't in the true tree -- hint, use weights.update
     for i,j in pred.edges_iter():
-        # TODO: your code here
-        pass
+        if not true.has_edge(i, j):
+            weights.update(G[i][j], -1)
         
     # first, iterate over all the edges in the true tree that
     # aren't in the predicted tree -- hint, use weights.update
     for i,j in true.edges_iter():
-        # TODO: your code here
-        pass
+        if not pred.has_edge(i, j):
+            weights.update(G[i][j], 1)
     
 # now we can finally put it all together to make a single update on a
 # single example
@@ -132,7 +126,7 @@ def runOneExample(weights, trueGraph, quiet=False):
     computeGraphEdgeWeights(G, weights)
 
     # make a prediction
-    predGraph = 0 # TODO
+    predGraph = predictWeightedGraph(G)
 
     # compute the error
     err = numMistakes(trueGraph, predGraph)
@@ -145,43 +139,11 @@ def runOneExample(weights, trueGraph, quiet=False):
         print ''
     
     # if necessary, make an update
-    # TODO
+    if err > 0:
+        perceptronUpdate(weights, G, trueGraph, predGraph)
 
     return err
 
-
-# we can run this with:
-# >>> weights = Weights()
-# >>> runOneExample(weights, testGraph)
-# error = 6.0 	pred = ( *root* <-> the ) ( *root* <-> hairy ) ( *root* <-> monster ) ( *root* <-> ate ) ( *root* <-> tasty ) ( *root* <-> little ) ( *root* <-> children ) 
-# >>> runOneExample(weights, testGraph)
-# error = 2.0 	pred = ( *root* <-> the ) ( the <-> monster ) ( hairy <-> monster ) ( hairy <-> children ) ( monster <-> ate ) ( tasty <-> children ) ( little <-> children ) 
-# >>> runOneExample(weights, testGraph)
-# error = 0.0 	pred = ( *root* <-> ate ) ( the <-> monster ) ( hairy <-> monster ) ( monster <-> ate ) ( ate <-> children ) ( tasty <-> children ) ( little <-> children ) 
-#
-# as you can see, the error keeps dropping and the tree gets better
-# and better
-
-# now, if you want to play around, i've given you a lot more real
-# trees (en.tr) and functions (iterCoNLL) with which to read them in!
-# see how well you can do!!!
-#
-# you can run, for instance:
-# weights = Weights()
-# >>> for iteration in range(5):
-# ...     totalErr = 0.
-# ...     for G in iterCoNLL('en.tr100'): totalErr += runOneExample(weights, G, quiet=True)
-# ...     print totalErr
-# ... 
-# 1891.0
-# 1413.0
-# 1113.0
-# 799.0
-# 605.0
-#
-# as we make more iterations over the data, the error should (roughly)
-# keep dropping. this is on a small subset of the overall data, but
-# perhaps you can make better features that will help!!!
 
 def iterCoNLL(filename):
     h = open(filename, 'r')
@@ -211,3 +173,31 @@ def iterCoNLL(filename):
     if G != None:
         yield G
     h.close()
+
+
+import sys
+if __name__ == "__main__":
+
+    #file_train = sys.argv[1]
+    file_train = "en.tr100"
+
+    #runOneExample(weights, testGraph)
+    #runOneExample(weights, testGraph)
+    #runOneExample(weights, testGraph)
+
+    ## Train
+    weights = Weights()
+
+    for interation in range(5):
+        totalErr = 0
+        for G in iterCoNLL(file_train):
+
+           totalErr += runOneExample(weights, G, quiet=True)
+
+        print("Total error: {0}".format(totalErr))
+
+
+# as we make more iterations over the data, the error should (roughly)
+# keep dropping. this is on a small subset of the overall data, but
+# perhaps you can make better features that will help!!!
+
