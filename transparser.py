@@ -433,5 +433,5 @@ if __name__ == "__main__":
   training = process_labeled_set(file_train)
   dev = process_labeled_set("en.dev")
 
-  eval_dev = True
+  eval_dev = False
   perceptron(training, dev, file_test, file_out, eval_dev)

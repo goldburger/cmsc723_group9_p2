@@ -13,6 +13,9 @@ Making the changes of additional features based on the top of the buffer (word a
 Combining the above changes resulted in improvement above the goal of 70% on the dev set, yielding roughly 72% performance on average.
 
 
+Finally, we additionally added features based on the pair of words where one comes from the head of the stack and the other from the head of the buffer, as well as a feature for the pair of POS for these words. Our intuition was that adding this combination would carry additional information compared to the features of stack head and buffer head (or their POS) individually, and would therefore allow the perceptron to better distinguish between transition states. Adding these features further improved performance for the dev set, although by the small amount of ~2 percentage points.
+
+
 We implemented the arc-eager parser with a dynamic oracle, as described in [A dynamic oracle for arc-eager dependency parsing]
 but it got at most about 64.9% accuracy on the en.dev data set. 
 We trained it with 10 iteration on the en.tr data set with k=3 and p=0.1, meaning that 90% of the time non-optimal transitions were used at training time starting on the 4-th iteration.

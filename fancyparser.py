@@ -240,6 +240,12 @@ def make_feature_vec(configs):
       next_vec['PAIR_WORDS_' + attr['word'] + '_' + attr0['word']] = factor
       # Pair of POS at top of stack (not symmetric)
       next_vec['PAIR_POS_' + attr['cpos'] + '_' + attr0['cpos']] = factor
+    # Features for head of stack + head of buffer word and POS
+    if len(config[1]) > 0 and len(config[0]) > 0:
+      attr0 = config[0][0]
+      attr1 = config[1][0]
+      next_vec['PAIR_STKBUFFER_' + attr0['word'] + '_' + attr1['word']] = factor
+      next_vec['PAIR_STKBUFFER_POS' + attr0['cpos'] + '_' + attr1['cpos']] = factor
     vec.append(next_vec)
   return vec
 
@@ -250,17 +256,21 @@ def score_with_features(p, theta, transitions):
     scores = defaultdict(float)
     for t in transitions:
       # TODO: As add extra features, add here too
-      if (len(p.stack) > 0):
+      if len(p.stack) > 0:
         scores[t] += theta[t]['S_TOP_' + p.stack[0].word]
         scores[t] += theta[t]['S_TOP_POS_' + p.graph.node[p.stack[0].id]['cpos']]
-      if (len(p.buffer) > 0):
+      if len(p.buffer) > 0:
         scores[t] += theta[t]['B_HEAD_' + p.buffer[0].word]
         scores[t] += theta[t]['B_HEAD_POS_' + p.graph.node[p.buffer[0].id]['cpos']]
-      if (len(p.stack) > 1):
+      if len(p.stack) > 1:
         scores[t] += theta[t]['S_SECOND_' + p.stack[1].word]
         scores[t] += theta[t]['S_SECOND_POS_' + p.graph.node[p.stack[1].id]['cpos']]
         scores[t] += theta[t]['PAIR_WORDS_' + p.stack[1].word + '_' + p.stack[0].word]
         scores[t] += theta[t]['PAIR_POS_' + p.graph.node[p.stack[1].id]['cpos'] + '_' + p.graph.node[p.stack[0].id]['cpos']]
+      # Features for head of stack + head of buffer word and POS
+      if len(p.stack) > 0 and len(p.buffer) > 0:
+        scores[t] += theta[t]['PAIR_STKBUFFER_' + p.stack[0].word + '_' + p.buffer[0].word]
+        scores[t] += theta[t]['PAIR_STKBUFFER_POS' + p.graph.node[p.stack[0].id]['cpos'] + '_' + p.graph.node[p.buffer[0].id]['cpos']]
     v = list(scores.values())
     k = list(scores.keys())
     yhat = k[v.index(max(v))]
@@ -443,5 +453,5 @@ if __name__ == "__main__":
   training = process_labeled_set(file_train)
   dev = process_labeled_set("en.dev")
 
-  eval_dev = True
+  eval_dev = False
   perceptron(training, dev, file_test, file_out, eval_dev)
