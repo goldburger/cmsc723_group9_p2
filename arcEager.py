@@ -39,6 +39,8 @@ class ArcState():
 		state = state.shift()
 		return state
 
+	def __str__(self):
+		return "{0} : {1} | {2}".format([w.word for w in self.stack], [w.word for w in self.buffer], self.relations)
 
 	## Perform a left arc transition in this state
 	## Create rel. between head of buffer and top of stack, pop the stack
@@ -51,14 +53,14 @@ class ArcState():
 		if len(self.stack) < 1 or len(self.buffer) < 1:
 			raise Exception("Arc left without items")
 
-		w1 = self.stack[0]
-		w2 = self.buffer[0]
+		s = self.stack[0]
+		b = self.buffer[0]
 
-		new_rel.append((w1.id, w2.id))
+		new_rel.append((b.id, s.id))
 		new_stack.pop(0)
 
 		if self.verbose:
-			print("{0} : {1} | ({2} <- {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_LEFT"))
+			print("{0} : {1} | ({2} <- {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], s.word, b.word, "ARC_LEFT"))
 
 		return ArcState(new_buffer, new_stack, new_rel, self.verbose)
 
@@ -73,15 +75,15 @@ class ArcState():
 		if len(self.stack) < 1 or len(self.buffer) < 1:
 			raise Exception("Arc right without items")
 
-		w1 = self.stack[0]
-		w2 = self.buffer[0]
+		s = self.stack[0]
+		b = self.buffer[0]
 
-		new_rel.append((w1.id, w2.id))	## Create rel. between top of stack and head of buffer
+		new_rel.append((s.id, b.id))	## Create rel. between top of stack and head of buffer
 		new_buffer.pop(0) 				## Shift head of buffer to top stack
-		new_stack.insert(0, w2)
+		new_stack.insert(0, b)
 
 		if self.verbose:
-			print("{0} : {1} | ({2} -> {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], w2.word, w1.word, "ARC_RIGHT"))
+			print("{0} : {1} | ({2} -> {3}) - {4}".format([w.word for w in self.stack], [w.word for w in self.buffer], s.word, b.word, "ARC_RIGHT"))
 
 		return ArcState(new_buffer, new_stack, new_rel, self.verbose)
 
@@ -136,16 +138,16 @@ class ArcState():
 	## Get the next correct action for this state to match the given target graph
 	def get_next_action(self, graph):
 		if len(self.stack) > 0 and len(self.buffer) > 0:
-			s1 = self.stack[0]
-			s2 = self.buffer[0]
+			s = self.stack[0]
+			b = self.buffer[0]
 
-			if(graph.has_edge(s1.id, s2.id)):
+			if(graph.has_edge(b.id, s.id)):
 				return ArcState.ARC_LEFT
-			elif(graph.has_edge(s2.id, s1.id)):
+			elif(graph.has_edge(s.id, b.id)):
 				return ArcState.ARC_RIGHT
 			else:
-				for k in range(0, s1.id):
-					if (graph.has_edge(k, s2.id) or graph.has_edge(s2.id, k)):
+				for k in range(0, s.id):
+					if (graph.has_edge(k, b.id) or graph.has_edge(b.id, k)):
 						return ArcState.REDUCE
 
 		elif len(self.stack) > 1:
@@ -165,24 +167,109 @@ class ArcState():
 		if action == ArcState.REDUCE:
 			return self.reduce()
 
+		raise Exception("Invalid Action")
+
 
 	## Return True if the given action can be performed in this state, False otherwise
 	def valid_action(self, action):
 		if action == ArcState.ARC_LEFT:
 			if len(self.stack) < 1 or len(self.buffer) < 1:
 				return False
+			if self.stack[0].id == 0:  ## Cannot be the root
+				return False
+			for l in self.relations:
+				if l[1] == self.stack[0]:
+					return False
+
 		if action == ArcState.ARC_RIGHT:
 			if len(self.stack) < 1 or len(self.buffer) < 1:
 				return False
+
 		if action == ArcState.SHIFT:
 			if len(self.buffer) == 0:
 				return False
+
 		if action == ArcState.REDUCE:
 			if len(self.stack) == 0:
 				return False
+			#for l in self.relations:
+			#	if l[1] == self.stack[0].id:  ## Must have a head before it is removed 
+			#		return True
+			#return False
 
 		return True
 
+	## Compute the cost of perfoming the given action
+	def action_cost(self, action, graph):
+		if not self.valid_action(action):
+			return 999
+
+		## Calculate loss for the left arc action
+		if action == ArcState.ARC_LEFT:
+			b = self.buffer[0]
+			s = self.stack[0]
+
+			if graph.has_edge(b.id, s.id):
+				return 0 	## No loss if this edge is in the gold graph
+
+			head_in_buffer = False
+			for k in self.buffer:
+				if graph.has_edge(k.id, s.id):
+					head_in_buffer = True
+					break
+
+			if not head_in_buffer:
+				return 0  ## No loss if the gold head was already lost due to previous mistake
+
+			loss = 0
+			for k in self.buffer:
+				if (graph.has_edge(k.id, s.id) or graph.has_edge(s.id, k.id)):
+					loss += 1 	## Loss of one for each edge lost by this action
+
+			return loss
+
+		## Calculate loss for the right arc action
+		if action == ArcState.ARC_RIGHT:
+			b = self.buffer[0]
+			s = self.stack[0]
+
+			if graph.has_edge(s.id, b.id):
+				return 0 	## No loss if this edge is in the gold graph
+
+			loss = 0
+			for k in (self.buffer + self.stack):
+				if (graph.has_edge(k.id, b.id)):
+					loss += 1
+
+			for k in (self.stack):
+				if (graph.has_edge(b.id, k.id)):
+					loss += 1
+
+			return loss
+
+		## Calculate loss for the shift action
+		if action == ArcState.SHIFT:
+			b = self.buffer[0]
+
+			loss = 0
+			for k in self.stack:
+				if (graph.has_edge(k.id, b.id) or graph.has_edge(b.id, k.id)):
+					loss += 1
+					
+			return loss
+
+		## Calculate loss for the reduce action
+		if action == ArcState.REDUCE:
+			s = self.stack[0]
+
+			loss = 0
+			for k in self.buffer:
+				if (graph.has_edge(s.id, k.id)):
+					loss += 1
+					
+			return loss
+
+		raise Exception("Invalid Action")
 
 def iterCoNLL(filename):
 	h = open(filename, 'r')
@@ -206,7 +293,7 @@ def iterCoNLL(filename):
 								 'pos'  : pos,
 								 'feats': feats})
 			if head != "_":
-				G.add_edge(int(id), int(head))
+				G.add_edge(int(head), int(id))
 
 	if G != None:
 		yield G
@@ -234,7 +321,13 @@ if __name__ == "__main__":
 			try:
 				## Keep predicting until we reach an end state
 				while not arcState.done():
-					arcState = arcState.do_action(arcState.get_next_action(graph))
+					a = arcState.get_next_action(graph)
+					if arcState.valid_action(a):
+						arcState = arcState.do_action(a)
+					else:
+						print(a)
+						print(arcState)
+						break
 
 				## Go though each node in the graph and find the predicted head
 				for id in graph.nodes():

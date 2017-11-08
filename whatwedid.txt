@@ -11,3 +11,10 @@ In addition to using the larger training set, we implemented two additional feat
 Making the changes of additional features based on the top of the buffer (word and POS) we thought was worth trying due to the intuition that, although our arc-standard implementation immediately works with only entries on the stack, the head of the buffer has data relevant for iterations of the transition algorithm that will soon follow. Therefore, having the perceptron learn features using this identity appears to be relevant for scoring, and able to help the oracle make better decisions.
 
 Combining the above changes resulted in improvement above the goal of 70% on the dev set, yielding roughly 72% performance on average.
+
+
+We implemented the arc-eager parser with a dynamic oracle, as described in [A dynamic oracle for arc-eager dependency parsing]
+but it got at most about 64.9% accuracy on the en.dev data set. 
+We trained it with 10 iteration on the en.tr data set with k=3 and p=0.1, meaning that 90% of the time non-optimal transitions were used at training time starting on the 4-th iteration.
+
+We likely need to spend more time tweaking the features and parameters for this parser, or there may be subtle bug in the implementation that prevents it from doing better. 
