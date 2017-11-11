@@ -352,7 +352,7 @@ def perceptron(training_configs, dev_configs, testfile, testout, eval_dev):
         best_dev_iteration = iteration
         best_theta = theta_temp
       elif (iteration - best_dev_iteration >= 5):
-        print "Stopping; will use best dev result of " + str(best_dev_results) + " from iteration " + str(best_dev_iteration)
+        #print "Stopping; will use best dev result of " + str(best_dev_results) + " from iteration " + str(best_dev_iteration)
         # Test: write to file dev results
         if eval_dev:
           sentences = read_sentences("en.dev")
@@ -389,7 +389,7 @@ def perceptron(training_configs, dev_configs, testfile, testout, eval_dev):
                 writer.writerow(word)
               writer.writerow([])
         return
-      print "Relation attachment score on dev set: " + str(current_dev_results)
+      #print "Relation attachment score on dev set: " + str(current_dev_results)
 
       shuffle(indices)
       iteration += 1
