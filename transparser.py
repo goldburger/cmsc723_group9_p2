@@ -300,7 +300,7 @@ def perceptron(training_configs, dev_configs, testfile, testout, eval_dev):
   for i in range(0, len(training_configs)):
     indices.append(i)
 
-  gen = iterCoNLL("en.dev")
+  gen = iterCoNLL("data/en_dev.txt")
   # Holds tuples of {initial config, gold relation set} for each dev sentence
   dev_golds = []
   for s in gen:
@@ -355,7 +355,7 @@ def perceptron(training_configs, dev_configs, testfile, testout, eval_dev):
         #print "Stopping; will use best dev result of " + str(best_dev_results) + " from iteration " + str(best_dev_iteration)
         # Test: write to file dev results
         if eval_dev:
-          sentences = read_sentences("en.dev")
+          sentences = read_sentences("data/en_dev.txt")
           for i in range(0, len(sentences)):
             for j in range(0, len(sentences[i])):
               sentences[i][j][6] = ""
@@ -363,13 +363,13 @@ def perceptron(training_configs, dev_configs, testfile, testout, eval_dev):
               # Writes the head number for the words that have relations
               # Ugly indexing though...
               sentences[i][relation[1]-1][6] = str(relation[0])
-          with open("en.dev.out", 'wb') as csvfile:
+          with open("en_dev_out.txt", 'wb') as csvfile:
             writer = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             for sentence in sentences:
               for word in sentence:
                 writer.writerow(word)
               writer.writerow([])
-          depeval.eval("en.dev", "en.dev.out")
+          depeval.eval("data/en_dev.txt", "en_dev_out.txt")
         # Code to write to testout results on test sentences
         else:
           gen = iterCoNLL(testfile)
@@ -431,7 +431,7 @@ if __name__ == "__main__":
   file_out = sys.argv[3]
 
   training = process_labeled_set(file_train)
-  dev = process_labeled_set("en.dev")
+  dev = process_labeled_set("data/en_dev.txt")
 
   eval_dev = False
   perceptron(training, dev, file_test, file_out, eval_dev)
